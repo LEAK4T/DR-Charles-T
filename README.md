@@ -12,9 +12,15 @@ Patient tracker for Dr. Charles Tozzer DDS, hosted on Cloudflare Pages with a D1
 
 Nothing secret is in this repo. Passwords are stored only as salted PBKDF2 hashes in D1, and the cookie-signing key is generated inside the database on first use.
 
-## Admin login
+## Roles
 
-The owner's login (`michael`) is an admin login: it opens both the tracker and `/admin`. Staff logins created on `/admin` can only use the tracker. Admins can't pause, remove or reset their own login from the page (so you can't lock yourself out); use **Change my password** instead.
+| Role | Tracker | `/admin`: activity log, add / pause / reset / remove logins | Make managers | Killswitch |
+| --- | --- | --- | --- | --- |
+| Owner (`michael`) | ✓ | ✓ | ✓ | ✓ |
+| Manager (`ctozzer`) | ✓ | ✓ — every login except the owner's | — | — |
+| Staff | ✓ | — | — | — |
+
+Nobody can pause, remove or reset their own login from the page, and the owner's login can't be changed by anyone else. Use **Change my password** for your own login.
 
 ## Staff logins
 

@@ -913,7 +913,7 @@ function showAuth(msg){
     try{
       const r=await API.req('POST','/api/login',{username,password});
       try{ localStorage.setItem('tozzer-user',r.name); }catch(_){}
-      if(r.offerChange) showFirstLogin(r.name,r.isAdmin); else signedIn(r.name,r.isAdmin);
+      if(r.offerChange) showFirstLogin(r.name,r.canManage); else signedIn(r.name,r.canManage);
     }catch(e){
       btn.disabled=false; btn.textContent='Sign in';
       er.textContent=e.code==='wrong_login'?'That username and password don\'t match. Check with the office manager if you are unsure.':
@@ -982,7 +982,7 @@ function bumpIdle(){ clearTimeout(idleTimer); if(me) idleTimer=setTimeout(()=>si
 /* ---------- boot ---------- */
 (async()=>{
   readOnly=true; $('#btn-add').disabled=true; $('#btn-import').disabled=true;
-  try{ const r=await API.req('GET','/api/me'); if(r.offerChange) showFirstLogin(r.name,r.isAdmin); else signedIn(r.name,r.isAdmin); }
+  try{ const r=await API.req('GET','/api/me'); if(r.offerChange) showFirstLogin(r.name,r.canManage); else signedIn(r.name,r.canManage); }
   catch(e){
     if(e.code==='offline') showGate('This site is temporarily unavailable','The patient tracker has been taken offline by the office. Please contact the office manager.');
     else if(e.status===401) showAuth('');

@@ -14,7 +14,7 @@ export async function onRequestPost({ request, env }) {
   if (body.keep) {
     await env.DB.prepare('UPDATE users SET offer_change = 0 WHERE id = ?').bind(s.id).run();
     await audit(env, s.name, 'kept_login');
-    return json({ name: s.name, isAdmin: s.isAdmin });
+    return json({ name: s.name, canManage: s.canManage });
   }
 
   const username = body.username === undefined ? s.name : cleanUsername(body.username);
@@ -39,5 +39,5 @@ export async function onRequestPost({ request, env }) {
 
   // A new password ends old sessions, so hand this browser a fresh one.
   const user = await env.DB.prepare('SELECT id, session_version FROM users WHERE id = ?').bind(s.id).first();
-  return json({ name: username, isAdmin: s.isAdmin }, 200, { 'set-cookie': await makeSessionCookie(env, user) });
+  return json({ name: username, canManage: s.canManage }, 200, { 'set-cookie': await makeSessionCookie(env, user) });
 }

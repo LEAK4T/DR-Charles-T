@@ -87,7 +87,7 @@ tr.alert td{color:var(--bad)}
 <main><div class="wrap stack" id="app">
   <section class="panel" id="gate">
     <h2>Sign in</h2>
-    <p class="muted">Use your admin login. Staff logins can't open this page.</p>
+    <p class="muted">Use an owner or manager login. Staff logins can't open this page.</p>
     <form id="key-form" novalidate style="margin-top:12px" class="stack">
       <div><label for="a-user">Username</label><input id="a-user" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
       <div><label for="key">Password</label><input id="key" type="password" autocomplete="current-password" required></div>
@@ -112,11 +112,11 @@ const API = window.ADMIN_API || {
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let state=null, confirming=null, busy=false, issued=null, codeOpen=false;
-const LABELS={admin_login:'Signed in to admin',admin_login_failed:'Wrong admin sign-in',changed_own_password:'Changed own password',login:'Signed in',logout:'Signed out',login_failed:'Wrong username or password',create:'Added patient',update:'Edited patient',delete:'Deleted patient',killswitch_on:'Killswitch on: site offline',killswitch_off:'Site back online',signout_all:'Signed everyone out',user_created:'Login created',password_reset:'Password reset',user_disabled:'Login paused',user_enabled:'Login resumed',user_removed:'Login removed',changed_login:'Chose own login',kept_login:'Kept given login'};
+const LABELS={made_manager:'Made manager',made_staff:'Made staff',admin_login:'Signed in to admin',admin_login_failed:'Wrong admin sign-in',changed_own_password:'Changed own password',login:'Signed in',logout:'Signed out',login_failed:'Wrong username or password',create:'Added patient',update:'Edited patient',delete:'Deleted patient',killswitch_on:'Killswitch on: site offline',killswitch_off:'Site back online',signout_all:'Signed everyone out',user_created:'Login created',password_reset:'Password reset',user_disabled:'Login paused',user_enabled:'Login resumed',user_removed:'Login removed',changed_login:'Chose own login',kept_login:'Kept given login'};
 const ALERTS=new Set(['login_failed','admin_login_failed','killswitch_on','delete','user_removed']);
 function when(iso){ if(!iso) return '—'; return new Date(iso).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }
 function toast(m){ const s=$('#toast-slot'); s.innerHTML='<div class="toast" role="status">'+esc(m)+'</div>'; clearTimeout(toast.t); toast.t=setTimeout(()=>s.innerHTML='',3200); }
-function errText(e){ return e.code==='wrong_login'?'That username and password don\'t match an admin login.':e.code==='locked'?'Too many wrong attempts from this device. Wait 30 minutes and try again.':e.code==='not_yourself'?'You can\'t pause, remove or reset your own login here.':e.code==='wrong_current'?'Your current password is not right.':e.code==='weak_password'?'Use at least 10 characters.':e.code==='username_taken'?'That username is already in use.':e.code==='bad_username'?'Usernames are 3 to 32 characters: lowercase letters, numbers, dots and dashes.':'Could not reach the server. Check your connection and try again.'; }
+function errText(e){ return e.code==='wrong_login'?'That username and password don\'t match an owner or manager login.':e.code==='protected'?'Only the owner can change the owner\'s login.':e.code==='not_admin'?'Only the owner can do that.':e.code==='locked'?'Too many wrong attempts from this device. Wait 30 minutes and try again.':e.code==='not_yourself'?'You can\'t pause, remove or reset your own login here.':e.code==='wrong_current'?'Your current password is not right.':e.code==='weak_password'?'Use at least 10 characters.':e.code==='username_taken'?'That username is already in use.':e.code==='bad_username'?'Usernames are 3 to 32 characters: lowercase letters, numbers, dots and dashes.':'Could not reach the server. Check your connection and try again.'; }
 
 $('#key-form').addEventListener('submit',async ev=>{
   ev.preventDefault();
@@ -138,22 +138,23 @@ async function run(path,body,msg){
 
 function render(){
   const s=state, off=s.offline, dis=busy?' disabled':'';
-  const rows=(s.activity||[]).map(a=>'<tr'+(ALERTS.has(a.action)?' class="alert"':'')+'><td>'+esc(when(a.at))+'</td><td>'+esc(a.who||'')+'</td><td>'+esc(LABELS[a.action]||a.action)+(a.action.startsWith('user_')||a.action==='password_reset'?' · '+esc(a.detail||''):'')+'</td></tr>').join('');
-  const users=(s.users||[]).map(u=>'<div class="user"><div><div class="nm">'+esc(u.username)+(u.isAdmin?'<span class="chip">Admin</span>':'')+(u.disabled?'<span class="chip off">Paused</span>':u.firstLoginPending&&!u.lastLogin?'<span class="chip">Not signed in yet</span>':'')+'</div><div class="sub">'+(u.username===s.me?'You · ':'')+'Last sign-in '+esc(when(u.lastLogin))+'</div></div>'+
-    (u.username===s.me ? '' : confirming==='rm:'+u.id
+  const rows=(s.activity||[]).map(a=>'<tr'+(ALERTS.has(a.action)?' class="alert"':'')+'><td>'+esc(when(a.at))+'</td><td>'+esc(a.who||'')+'</td><td>'+esc(LABELS[a.action]||a.action)+(a.action.startsWith('user_')||a.action.startsWith('made_')||a.action==='password_reset'?' · '+esc(a.detail||''):'')+'</td></tr>').join('');
+  const users=(s.users||[]).map(u=>'<div class="user"><div><div class="nm">'+esc(u.username)+(u.isAdmin?'<span class="chip">Owner</span>':u.isManager?'<span class="chip">Manager</span>':'')+(u.disabled?'<span class="chip off">Paused</span>':u.firstLoginPending&&!u.lastLogin?'<span class="chip">Not signed in yet</span>':'')+'</div><div class="sub">'+(u.username===s.me?'You · ':'')+'Last sign-in '+esc(when(u.lastLogin))+'</div></div>'+
+    (u.username===s.me||u.isAdmin ? '' : confirming==='rm:'+u.id
       ? '<div class="row" style="margin:0"><button class="btn small" type="button" data-u="remove" data-id="'+esc(u.id)+'" style="color:var(--bad)"'+dis+'>Yes, remove '+esc(u.username)+'</button><button class="btn small" type="button" data-cancel>Cancel</button></div>'
-      : '<div class="row" style="margin:0"><button class="btn small" type="button" data-u="reset" data-id="'+esc(u.id)+'"'+dis+'>New password</button><button class="btn small" type="button" data-u="'+(u.disabled?'enable':'disable')+'" data-id="'+esc(u.id)+'"'+dis+'>'+(u.disabled?'Resume':'Pause')+'</button><button class="btn small" type="button" data-askrm="'+esc(u.id)+'">Remove</button></div>')+
+      : '<div class="row" style="margin:0"><button class="btn small" type="button" data-u="reset" data-id="'+esc(u.id)+'"'+dis+'>New password</button><button class="btn small" type="button" data-u="'+(u.disabled?'enable':'disable')+'" data-id="'+esc(u.id)+'"'+dis+'>'+(u.disabled?'Resume':'Pause')+'</button>'+(s.role==='owner'?'<button class="btn small" type="button" data-role="'+(u.isManager?'0':'1')+'" data-id="'+esc(u.id)+'"'+dis+'>'+(u.isManager?'Make staff':'Make manager')+'</button>':'')+'<button class="btn small" type="button" data-askrm="'+esc(u.id)+'">Remove</button></div>')+
     '</div>').join('');
   $('#app').innerHTML=
     '<div class="row" style="margin:0;justify-content:flex-end"><span class="muted" style="align-self:center">Signed in as <b>'+esc(s.me||'')+'</b></span><a class="btn small" href="/">Open tracker</a><button class="btn small" type="button" data-signout>Sign out</button></div>'+
     '<section class="panel">'+
       '<div class="state'+(off?' off':'')+'"><span class="lamp" aria-hidden="true"></span><div><b>'+(off?'Site is offline':'Site is live')+'</b><p class="muted">'+(off?'Staff see an "unavailable" page and nobody can sign in or read records.':'Staff can sign in and work normally.')+'</p></div></div>'+
       '<div class="facts"><div class="fact"><div class="k">Patients on file</div><div class="v">'+s.patients+'</div></div><div class="fact"><div class="k">Switch last changed</div><div class="v">'+esc(when(s.changedAt))+'</div></div></div>'+
+      (s.role!=='owner' ? '<p class="muted" style="margin-top:12px">Only the owner can take the site offline or sign everyone out.</p>' :
       (off
         ? '<div class="row"><button class="btn go" type="button" data-act="online"'+dis+'>Bring site back online</button></div><p class="muted" style="margin-top:8px">Everyone will need to sign in again.</p>'
         : confirming==='kill'
           ? '<div class="confirm"><p><b>Take the site offline now?</b> Everyone is signed out immediately and the tracker shows an unavailable page until you turn it back on. Patient records are kept, not deleted.</p><div class="row"><button class="btn kill" type="button" data-act="offline"'+dis+'>Yes, take it offline</button><button class="btn" type="button" data-cancel>Cancel</button></div></div>'
-          : '<div class="row"><button class="btn kill" type="button" data-askkill>Take site offline</button><button class="btn" type="button" data-act="signout-all"'+dis+'>Sign everyone out</button></div>')+
+          : '<div class="row"><button class="btn kill" type="button" data-askkill>Take site offline</button><button class="btn" type="button" data-act="signout-all"'+dis+'>Sign everyone out</button></div>'))+
     '</section>'+
     '<section class="panel"><h2>Staff logins</h2><p class="muted">Each person gets their own username and a temporary password. On their first sign-in they can choose their own.</p>'+
       (issued?'<div class="issued" role="status"><p><b>Give these to '+esc(issued.username)+'.</b> The password is shown only now.</p><div class="cred"><span class="muted">Username</span><code>'+esc(issued.username)+'</code><span class="muted">Password</span><code id="iss-pass">'+esc(issued.password)+'</code></div><div class="row"><button class="btn small" type="button" data-copy>Copy both</button><button class="btn small" type="button" data-dismiss>Done</button></div></div>':'')+
@@ -168,7 +169,7 @@ function render(){
     '<section class="panel"><h2>Your password</h2>'+
       (codeOpen
         ? '<form id="code-form" novalidate style="margin-top:8px"><label for="code0">Current password</label><input id="code0" type="password" autocomplete="current-password"><label for="code1" style="margin-top:10px">New password</label><input id="code1" type="password" autocomplete="new-password"><p class="hint">At least 10 characters.</p><label for="code2" style="margin-top:10px">Type it again</label><input id="code2" type="password" autocomplete="new-password"><p class="err" id="code-err" hidden></p><div class="row"><button class="btn primary" type="submit"'+dis+'>Change password</button><button class="btn" type="button" data-codeclose>Cancel</button></div></form>'
-        : '<p class="muted">This one login opens both the tracker and this page.</p><div class="row"><button class="btn" type="button" data-codeopen>Change my password</button></div>')+
+        : '<p class="muted">'+(s.role==='owner'?'Your login opens both the tracker and this page.':'Your manager login opens both the tracker and this page.')+'</p><div class="row"><button class="btn" type="button" data-codeopen>Change my password</button></div>')+
     '</section>';
 }
 document.addEventListener('submit',ev=>{
@@ -191,6 +192,7 @@ document.addEventListener('click',e=>{
   else if(d.copy!==undefined){ const txt='Username: '+issued.username+'\nPassword: '+issued.password; (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('Copied'),()=>{ const r=document.createRange(); r.selectNodeContents($('.cred')); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected. Press copy on your keyboard.'); }); }
   else if(d.signout!==undefined){ API.req('POST','/api/logout',{}).finally(signedOut); }
   else if(d.refresh!==undefined){ API.req('GET','/api/admin/status').then(s=>{state=s;render();toast('Updated');},er=>toast(errText(er))); }
+  else if(d.role!==undefined&&d.id){ const u=(state.users||[]).find(x=>x.id===d.id)||{}; run('/api/admin/users',{action:'set-role',id:d.id,manager:d.role==='1'},u.username+(d.role==='1'?' is now a manager':' is now staff')); }
   else if(d.u){ const u=(state.users||[]).find(x=>x.id===d.id)||{}; run('/api/admin/users',{action:d.u,id:d.id},{reset:'New password for '+u.username,disable:u.username+' is paused',enable:u.username+' can sign in again',remove:u.username+' removed'}[d.u]); }
   else if(d.act==='offline') run('/api/admin/status',{action:'offline'},'Site is offline and everyone is signed out');
   else if(d.act==='online') run('/api/admin/status',{action:'online'},'Site is back online');

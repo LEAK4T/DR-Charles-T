@@ -1,7 +1,7 @@
 import { json, checkSecret, makeSessionCookie, clientIp, tooManyAttempts, recordFailure, audit, isApiWrite, cleanUsername, getSession } from '../../../lib/auth.js';
 
 // Sign-in for the admin page. Lives under /api/admin/ so it still works while the killswitch is on.
-// Only logins marked as admin get in.
+// Only owner and manager logins get in.
 export async function onRequestPost({ request, env }) {
   if (!isApiWrite(request)) return json({ error: 'bad_request' }, 400);
   const ip = clientIp(request);
@@ -11,9 +11,9 @@ export async function onRequestPost({ request, env }) {
   try { body = await request.json(); } catch {}
   const username = cleanUsername(body.username);
   const user = username
-    ? await env.DB.prepare('SELECT id, username, pass_hash, session_version, disabled, is_admin FROM users WHERE username = ?').bind(username).first()
+    ? await env.DB.prepare('SELECT id, username, pass_hash, session_version, disabled, is_admin, is_manager FROM users WHERE username = ?').bind(username).first()
     : null;
-  const ok = await checkSecret(String(body.password || ''), user && user.is_admin && !user.disabled ? user.pass_hash : null);
+  const ok = await checkSecret(String(body.password || ''), user && (user.is_admin || user.is_manager) && !user.disabled ? user.pass_hash : null);
   if (!ok) {
     await recordFailure(env, ip, 'admin');
     await audit(env, username || '(blank)', 'admin_login_failed', null, ip);
@@ -28,6 +28,6 @@ export async function onRequestPost({ request, env }) {
 export async function onRequestGet({ request, env }) {
   const s = await getSession(request, env);
   if (!s) return json({ error: 'signed_out' }, 401);
-  if (!s.isAdmin) return json({ error: 'not_admin' }, 403);
+  if (!s.canManage) return json({ error: 'not_admin' }, 403);
   return json({ name: s.name });
 }

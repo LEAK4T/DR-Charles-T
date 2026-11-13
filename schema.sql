@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
   session_version INTEGER NOT NULL DEFAULT 1,
   disabled INTEGER NOT NULL DEFAULT 0,
   is_admin INTEGER NOT NULL DEFAULT 0,
+  is_manager INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
   last_login TEXT
 );

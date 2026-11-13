@@ -11,7 +11,7 @@ export async function onRequestPost({ request, env }) {
   const password = String(body.password || '');
 
   const user = username
-    ? await env.DB.prepare('SELECT id, username, pass_hash, session_version, offer_change, disabled, is_admin FROM users WHERE username = ?').bind(username).first()
+    ? await env.DB.prepare('SELECT id, username, pass_hash, session_version, offer_change, disabled, is_admin, is_manager FROM users WHERE username = ?').bind(username).first()
     : null;
   const good = await checkSecret(password, user && !user.disabled ? user.pass_hash : null);
   if (!good) {
@@ -21,5 +21,5 @@ export async function onRequestPost({ request, env }) {
   }
   await env.DB.prepare('UPDATE users SET last_login = ? WHERE id = ?').bind(new Date().toISOString(), user.id).run();
   await audit(env, user.username, 'login', null, ip);
-  return json({ name: user.username, offerChange: !!user.offer_change, isAdmin: !!user.is_admin }, 200, { 'set-cookie': await makeSessionCookie(env, user) });
+  return json({ name: user.username, offerChange: !!user.offer_change, canManage: !!(user.is_admin || user.is_manager) }, 200, { 'set-cookie': await makeSessionCookie(env, user) });
 }
