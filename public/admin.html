@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Tozzer Tracker Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600&family=Onest:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column — key gate, then a status panel with the switch, then recent activity. */
+:root{
+  --bg:#F3F8FB; --surface:#FFFFFF; --surface-2:#EDF4F8; --line:#D2DFE8; --ink:#182838; --muted:#526477;
+  --accent:#0B7A8A; --accent-ink:#FFFFFF; --night:#1E5F8E; --night-ink:#FFFFFF; --night-muted:#D3E6F4;
+  --good:#1C7D45; --good-soft:#DCF5E5; --bad:#B0352A; --bad-soft:#FDE3E0; --bad-ink:#FFFFFF;
+  --f-display:"Literata", Georgia, serif; --f-body:"Onest", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121B25; --surface:#1A2532; --surface-2:#202D3C; --line:#304254; --ink:#EAF1F7; --muted:#9EAFC1;
+  --accent:#5DC8D5; --accent-ink:#0E1820; --night:#163A59; --night-ink:#F1F6FB; --night-muted:#A9C4DB;
+  --good:#7FD39C; --good-soft:#1B3828; --bad:#F29389; --bad-soft:#40211E; --bad-ink:#2A0F0C; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#121B25; --surface:#1A2532; --surface-2:#202D3C; --line:#304254; --ink:#EAF1F7; --muted:#9EAFC1;
+  --accent:#5DC8D5; --accent-ink:#0E1820; --night:#163A59; --night-ink:#F1F6FB; --night-muted:#A9C4DB;
+  --good:#7FD39C; --good-soft:#1B3828; --bad:#F29389; --bad-soft:#40211E; --bad-ink:#2A0F0C; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+button,input{font:inherit;color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{background:var(--night);color:var(--night-ink);padding-block:18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:640px;margin-inline:auto}
+.top h1{font-family:var(--f-display);font-weight:600;font-size:1.45rem;margin:0}
+.top p{margin:2px 0 0;color:var(--night-muted);font-size:.85rem}
+main{padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.stack{display:flex;flex-direction:column;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px}
+.panel h2{margin:0 0 4px;font-size:1.05rem}
+.muted{color:var(--muted);font-size:.9rem;margin:0}
+label{display:block;font-size:.85rem;font-weight:500;margin-bottom:4px}
+input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px;min-height:44px}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 16px;font-weight:600;min-height:44px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.kill{background:var(--bad);color:var(--bad-ink);border-color:var(--bad);font-size:1rem;padding:12px 20px}
+.btn.go{background:var(--good);color:var(--surface);border-color:var(--good)}
+.btn:disabled{opacity:.55;cursor:default}
+.state{display:flex;align-items:center;gap:12px}
+.lamp{width:14px;height:14px;border-radius:50%;flex:none;background:var(--good);box-shadow:0 0 0 5px var(--good-soft)}
+.state.off .lamp{background:var(--bad);box-shadow:0 0 0 5px var(--bad-soft)}
+.state b{font-size:1.25rem}
+.confirm{margin-top:12px;background:var(--bad-soft);border-radius:8px;padding:12px 14px}
+.confirm p{margin:0 0 8px}
+.err{color:var(--bad);font-size:.9rem;margin:8px 0 0}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.fact{background:var(--surface-2);border-radius:8px;padding:10px 12px;min-width:0}
+.fact .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.fact .v{font-weight:600;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tbl-wrap{overflow-x:auto;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+tr.alert td{color:var(--bad)}
+.issued{margin-top:12px;background:var(--surface-2);border:1px dashed var(--accent);border-radius:8px;padding:12px 14px}
+.issued p{margin:0 0 8px}
+.cred{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-variant-numeric:tabular-nums}
+.cred code{font:600 1rem ui-monospace,SFMono-Regular,Menlo,monospace;overflow-wrap:anywhere;user-select:all}
+.users{display:flex;flex-direction:column;margin-top:8px}
+.user{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
+.user:last-child{border-bottom:0}
+.user .nm{font-weight:600}
+.user .sub{color:var(--muted);font-size:.82rem}
+.chip{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;background:var(--surface-2);color:var(--muted);margin-left:6px}
+.chip.off{background:var(--bad-soft);color:var(--bad)}
+.btn.small{min-height:34px;padding:4px 10px;font-size:.85rem;font-weight:500}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:10px}
+.inline .f{flex:1 1 200px;min-width:0}
+.hint{color:var(--muted);font-size:.8rem;margin:4px 0 0}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:.9rem}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>Admin</h1><p>Dr. Charles Tozzer DDS · Patient tracker owner controls</p></div></header>
+<main><div class="wrap stack" id="app">
+  <section class="panel" id="gate">
+    <h2>Sign in</h2>
+    <p class="muted">Use your admin login. Staff logins can't open this page.</p>
+    <form id="key-form" novalidate style="margin-top:12px" class="stack">
+      <div><label for="a-user">Username</label><input id="a-user" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
+      <div><label for="key">Password</label><input id="key" type="password" autocomplete="current-password" required></div>
+      <p class="err" id="key-err" hidden></p>
+      <div class="row" style="margin:0"><button class="btn primary" type="submit">Sign in</button></div>
+    </form>
+  </section>
+</div></main>
+<div id="toast-slot"></div>
+<script>
+(function(){
+const API = window.ADMIN_API || {
+  async req(method, path, body){
+    const opt={method,headers:{'x-requested-with':'tracker'},credentials:'same-origin',cache:'no-store'};
+    if(body){ opt.headers['content-type']='application/json'; opt.body=JSON.stringify(body); }
+    let r; try{ r=await fetch(path,opt); }catch(_){ const e=new Error('network'); e.code='network'; throw e; }
+    let d=null; try{ d=await r.json(); }catch(_){}
+    if(!r.ok){ const e=new Error((d&&d.error)||'http'); e.code=(d&&d.error)||''; e.message2=d&&d.message; throw e; }
+    return d;
+  }
+};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let state=null, confirming=null, busy=false, issued=null, codeOpen=false;
+const LABELS={admin_login:'Signed in to admin',admin_login_failed:'Wrong admin sign-in',changed_own_password:'Changed own password',login:'Signed in',logout:'Signed out',login_failed:'Wrong username or password',create:'Added patient',update:'Edited patient',delete:'Deleted patient',killswitch_on:'Killswitch on: site offline',killswitch_off:'Site back online',signout_all:'Signed everyone out',user_created:'Login created',password_reset:'Password reset',user_disabled:'Login paused',user_enabled:'Login resumed',user_removed:'Login removed',changed_login:'Chose own login',kept_login:'Kept given login'};
+const ALERTS=new Set(['login_failed','admin_login_failed','killswitch_on','delete','user_removed']);
+function when(iso){ if(!iso) return '—'; return new Date(iso).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}); }
+function toast(m){ const s=$('#toast-slot'); s.innerHTML='<div class="toast" role="status">'+esc(m)+'</div>'; clearTimeout(toast.t); toast.t=setTimeout(()=>s.innerHTML='',3200); }
+function errText(e){ return e.code==='wrong_login'?'That username and password don\'t match an admin login.':e.code==='locked'?'Too many wrong attempts from this device. Wait 30 minutes and try again.':e.code==='not_yourself'?'You can\'t pause, remove or reset your own login here.':e.code==='wrong_current'?'Your current password is not right.':e.code==='weak_password'?'Use at least 10 characters.':e.code==='username_taken'?'That username is already in use.':e.code==='bad_username'?'Usernames are 3 to 32 characters: lowercase letters, numbers, dots and dashes.':'Could not reach the server. Check your connection and try again.'; }
+
+$('#key-form').addEventListener('submit',async ev=>{
+  ev.preventDefault();
+  const u=$('#a-user').value.trim().toLowerCase(), k=$('#key').value; const er=$('#key-err'); er.hidden=true;
+  if(!u||!k){ er.textContent='Enter your username and password.'; er.hidden=false; return; }
+  try{ await API.req('POST','/api/admin/login',{username:u,password:k}); state=await API.req('GET','/api/admin/status'); render(); }
+  catch(e){ er.textContent=errText(e); er.hidden=false; $('#key').select(); }
+});
+// Already signed in as an admin in this browser? Skip the form.
+API.req('GET','/api/admin/status').then(s=>{ state=s; render(); },()=>{ const u=$('#a-user'); u&&u.focus(); });
+function signedOut(){ location.reload(); }
+
+async function run(path,body,msg){
+  if(busy) return; busy=true; render();
+  try{ const r=await API.req('POST',path,body); issued=r.issued||null; delete r.issued; state=r; confirming=null; if(msg) toast(msg); if(body.action==='change-my-password') codeOpen=false; }
+  catch(e){ if(e.code==='signed_out'){ signedOut(); return; } toast(errText(e)); }
+  busy=false; render();
+}
+
+function render(){
+  const s=state, off=s.offline, dis=busy?' disabled':'';
+  const rows=(s.activity||[]).map(a=>'<tr'+(ALERTS.has(a.action)?' class="alert"':'')+'><td>'+esc(when(a.at))+'</td><td>'+esc(a.who||'')+'</td><td>'+esc(LABELS[a.action]||a.action)+(a.action.startsWith('user_')||a.action==='password_reset'?' · '+esc(a.detail||''):'')+'</td></tr>').join('');
+  const users=(s.users||[]).map(u=>'<div class="user"><div><div class="nm">'+esc(u.username)+(u.isAdmin?'<span class="chip">Admin</span>':'')+(u.disabled?'<span class="chip off">Paused</span>':u.firstLoginPending&&!u.lastLogin?'<span class="chip">Not signed in yet</span>':'')+'</div><div class="sub">'+(u.username===s.me?'You · ':'')+'Last sign-in '+esc(when(u.lastLogin))+'</div></div>'+
+    (u.username===s.me ? '' : confirming==='rm:'+u.id
+      ? '<div class="row" style="margin:0"><button class="btn small" type="button" data-u="remove" data-id="'+esc(u.id)+'" style="color:var(--bad)"'+dis+'>Yes, remove '+esc(u.username)+'</button><button class="btn small" type="button" data-cancel>Cancel</button></div>'
+      : '<div class="row" style="margin:0"><button class="btn small" type="button" data-u="reset" data-id="'+esc(u.id)+'"'+dis+'>New password</button><button class="btn small" type="button" data-u="'+(u.disabled?'enable':'disable')+'" data-id="'+esc(u.id)+'"'+dis+'>'+(u.disabled?'Resume':'Pause')+'</button><button class="btn small" type="button" data-askrm="'+esc(u.id)+'">Remove</button></div>')+
+    '</div>').join('');
+  $('#app').innerHTML=
+    '<div class="row" style="margin:0;justify-content:flex-end"><span class="muted" style="align-self:center">Signed in as <b>'+esc(s.me||'')+'</b></span><a class="btn small" href="/">Open tracker</a><button class="btn small" type="button" data-signout>Sign out</button></div>'+
+    '<section class="panel">'+
+      '<div class="state'+(off?' off':'')+'"><span class="lamp" aria-hidden="true"></span><div><b>'+(off?'Site is offline':'Site is live')+'</b><p class="muted">'+(off?'Staff see an "unavailable" page and nobody can sign in or read records.':'Staff can sign in and work normally.')+'</p></div></div>'+
+      '<div class="facts"><div class="fact"><div class="k">Patients on file</div><div class="v">'+s.patients+'</div></div><div class="fact"><div class="k">Switch last changed</div><div class="v">'+esc(when(s.changedAt))+'</div></div></div>'+
+      (off
+        ? '<div class="row"><button class="btn go" type="button" data-act="online"'+dis+'>Bring site back online</button></div><p class="muted" style="margin-top:8px">Everyone will need to sign in again.</p>'
+        : confirming==='kill'
+          ? '<div class="confirm"><p><b>Take the site offline now?</b> Everyone is signed out immediately and the tracker shows an unavailable page until you turn it back on. Patient records are kept, not deleted.</p><div class="row"><button class="btn kill" type="button" data-act="offline"'+dis+'>Yes, take it offline</button><button class="btn" type="button" data-cancel>Cancel</button></div></div>'
+          : '<div class="row"><button class="btn kill" type="button" data-askkill>Take site offline</button><button class="btn" type="button" data-act="signout-all"'+dis+'>Sign everyone out</button></div>')+
+    '</section>'+
+    '<section class="panel"><h2>Staff logins</h2><p class="muted">Each person gets their own username and a temporary password. On their first sign-in they can choose their own.</p>'+
+      (issued?'<div class="issued" role="status"><p><b>Give these to '+esc(issued.username)+'.</b> The password is shown only now.</p><div class="cred"><span class="muted">Username</span><code>'+esc(issued.username)+'</code><span class="muted">Password</span><code id="iss-pass">'+esc(issued.password)+'</code></div><div class="row"><button class="btn small" type="button" data-copy>Copy both</button><button class="btn small" type="button" data-dismiss>Done</button></div></div>':'')+
+      '<form class="inline" id="add-form" novalidate><div class="f"><label for="new-user">New username</label><input id="new-user" autocapitalize="none" spellcheck="false" maxlength="32" placeholder="e.g. maria"></div><button class="btn primary" type="submit"'+dis+'>Create login</button></form>'+
+      '<p class="hint">Lowercase letters, numbers, dots and dashes.</p>'+
+      (users?'<div class="users">'+users+'</div>':'<p class="muted" style="margin-top:10px">No staff logins yet.</p>')+
+    '</section>'+
+    '<section class="panel"><h2>Recent activity</h2><p class="muted">Last 25 events. Wrong passwords, removals and deletions are in red.</p>'+
+      (rows?'<div class="tbl-wrap"><table><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p class="muted" style="margin-top:8px">Nothing yet.</p>')+
+      '<div class="row"><button class="btn" type="button" data-refresh>Refresh</button></div>'+
+    '</section>'+
+    '<section class="panel"><h2>Your password</h2>'+
+      (codeOpen
+        ? '<form id="code-form" novalidate style="margin-top:8px"><label for="code0">Current password</label><input id="code0" type="password" autocomplete="current-password"><label for="code1" style="margin-top:10px">New password</label><input id="code1" type="password" autocomplete="new-password"><p class="hint">At least 10 characters.</p><label for="code2" style="margin-top:10px">Type it again</label><input id="code2" type="password" autocomplete="new-password"><p class="err" id="code-err" hidden></p><div class="row"><button class="btn primary" type="submit"'+dis+'>Change password</button><button class="btn" type="button" data-codeclose>Cancel</button></div></form>'
+        : '<p class="muted">This one login opens both the tracker and this page.</p><div class="row"><button class="btn" type="button" data-codeopen>Change my password</button></div>')+
+    '</section>';
+}
+document.addEventListener('submit',ev=>{
+  if(ev.target.id==='add-form'){ ev.preventDefault(); const u=$('#new-user').value.trim().toLowerCase(); if(!/^[a-z0-9][a-z0-9._-]{2,31}$/.test(u)){ toast('Usernames are 3 to 32 characters: lowercase letters, numbers, dots and dashes.'); return; } run('/api/admin/users',{action:'create',username:u},'Login created for '+u); }
+  if(ev.target.id==='code-form'){ ev.preventDefault(); const c=$('#code0').value,a=$('#code1').value,b=$('#code2').value,er=$('#code-err'); er.hidden=true;
+    if(!c){ er.textContent='Enter your current password.'; er.hidden=false; return; }
+    if(a.length<10){ er.textContent='Use at least 10 characters.'; er.hidden=false; return; }
+    if(a!==b){ er.textContent='The two passwords don\'t match.'; er.hidden=false; return; }
+    run('/api/admin/users',{action:'change-my-password',current:c,password:a},'Password changed'); }
+});
+document.addEventListener('click',e=>{
+  const t=e.target.closest('button'); if(!t||!state) return;
+  const d=t.dataset;
+  if(d.askkill!==undefined){ confirming='kill'; render(); }
+  else if(d.askrm){ confirming='rm:'+d.askrm; render(); }
+  else if(d.cancel!==undefined){ confirming=null; render(); }
+  else if(d.dismiss!==undefined){ issued=null; render(); }
+  else if(d.codeopen!==undefined){ codeOpen=true; render(); setTimeout(()=>$('#code1').focus(),20); }
+  else if(d.codeclose!==undefined){ codeOpen=false; render(); }
+  else if(d.copy!==undefined){ const txt='Username: '+issued.username+'\nPassword: '+issued.password; (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>toast('Copied'),()=>{ const r=document.createRange(); r.selectNodeContents($('.cred')); const sel=getSelection(); sel.removeAllRanges(); sel.addRange(r); toast('Selected. Press copy on your keyboard.'); }); }
+  else if(d.signout!==undefined){ API.req('POST','/api/logout',{}).finally(signedOut); }
+  else if(d.refresh!==undefined){ API.req('GET','/api/admin/status').then(s=>{state=s;render();toast('Updated');},er=>toast(errText(er))); }
+  else if(d.u){ const u=(state.users||[]).find(x=>x.id===d.id)||{}; run('/api/admin/users',{action:d.u,id:d.id},{reset:'New password for '+u.username,disable:u.username+' is paused',enable:u.username+' can sign in again',remove:u.username+' removed'}[d.u]); }
+  else if(d.act==='offline') run('/api/admin/status',{action:'offline'},'Site is offline and everyone is signed out');
+  else if(d.act==='online') run('/api/admin/status',{action:'online'},'Site is back online');
+  else if(d.act==='signout-all') run('/api/admin/status',{action:'signout-all'},'Everyone has been signed out');
+});
+})();
+</script>
+</body>
+</html>

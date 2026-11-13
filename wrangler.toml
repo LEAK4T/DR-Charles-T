@@ -1,0 +1,9 @@
+# Cloudflare Pages configuration. The D1 database holds patient records, logins and settings.
+name = "dr-charles-t"
+compatibility_date = "2025-06-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tozzer-tracker"
+database_id = "8c9a002a-25f6-4a86-b0b7-2c1932858308"
